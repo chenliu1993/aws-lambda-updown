@@ -3,7 +3,7 @@ package pkg
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
-func New(instanceID *string) (Caller, error) {
-
+func New(instanceID *string) (*ec2.Client, error) {
+	log.Println("initialize client for ", *instanceID)
 	if *instanceID == "" {
-		fmt.Println("You must supply an instance ID (-i INSTANCE-ID")
+		log.Println("You must supply an instance ID (-i INSTANCE-ID")
 		return nil, errors.New("please input a instance ID")
 	}
 

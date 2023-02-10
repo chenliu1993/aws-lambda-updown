@@ -23,26 +23,31 @@ func HandlerReq(ctx context.Context, req Request) error {
 	if err != nil {
 		return err
 	}
+	log.Println("the current state is ", state.Name)
 
 	switch state.Name {
 	case "running":
 		// stop
 		stopInstance(ctx, *instanceID, client)
+		return nil
 	case "stopped":
 		//start
 		startInstance(ctx, *instanceID, client)
+	default:
+		return fmt.Errorf("instance is under wrong state: %s", state.Name)
 	}
-	return fmt.Errorf("instance is under wrong state: %s", state.Name)
-
+	return nil
 }
 
-func checkInstanceStatus(ctx context.Context, instanceID string, client Caller) (*ec2types.InstanceState, error) {
+func checkInstanceStatus(ctx context.Context, instanceID string, client *ec2.Client) (*ec2types.InstanceState, error) {
+	log.Println("check the instance status ", instanceID)
 	// Describe the status
 	output, err := client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{
 			instanceID,
 		},
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +55,8 @@ func checkInstanceStatus(ctx context.Context, instanceID string, client Caller) 
 	return output.Reservations[0].Instances[0].State, nil
 }
 
-func startInstance(ctx context.Context, instanceID string, client Caller) error {
-	log.Printf("start!!")
+func startInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
+	log.Println("start the instance ", instanceID)
 	input := &ec2.StartInstancesInput{
 		InstanceIds: []string{
 			instanceID,
@@ -71,7 +76,8 @@ func startInstance(ctx context.Context, instanceID string, client Caller) error 
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(200*time.Millisecond), 3))
 }
 
-func stopInstance(ctx context.Context, instanceID string, client Caller) error {
+func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
+	log.Println("stop the instance ", instanceID)
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []string{
 			instanceID,

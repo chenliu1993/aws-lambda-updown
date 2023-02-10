@@ -2,6 +2,6 @@ package pkg
 
 const (
 	// Key
-	api_key    = "AKIAUZASOGM6F4I5X4G4"
-	api_secret = "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"
+	api_key    = "AKIAUZASOGM6FC2GN2YW"
+	api_secret = "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"
 )

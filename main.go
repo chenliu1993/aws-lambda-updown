@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	log.Printf("begin")
+	log.Println("begin...")
 	runtime.Start(api.HandlerReq)
-	log.Printf("end")
+	log.Println("end...")
 }
