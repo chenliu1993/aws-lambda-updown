@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/cenkalti/backoff/v4"
@@ -72,7 +71,7 @@ func startInstance(ctx context.Context, instanceID string, client *ec2.Client) e
 		InstanceIds: []string{
 			instanceID,
 		},
-		DryRun: aws.Bool(true),
+		// DryRun: aws.Bool(true),
 	}
 
 	output, err := client.StartInstances(ctx, input)
@@ -93,7 +92,7 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 		InstanceIds: []string{
 			instanceID,
 		},
-		DryRun: aws.Bool(true),
+		// DryRun: aws.Bool(true),
 	}
 	output, err := client.StopInstances(ctx, input)
 	if err != nil {
