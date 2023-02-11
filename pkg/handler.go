@@ -14,7 +14,7 @@ import (
 
 func HandlerReq(ctx context.Context, req Request, currentTime time.Time) error {
 	instanceID := &req.InstanceID
-	client, err := New(instanceID)
+	client, err := New(instanceID, req.ApiKey, req.ApiSecret)
 	if err != nil {
 		return err
 	}
