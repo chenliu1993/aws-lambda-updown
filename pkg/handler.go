@@ -12,7 +12,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 )
 
-func HandlerReq(ctx context.Context, req Request) error {
+func HandlerReq(ctx context.Context, req Request, currentTime time.Time) error {
 	instanceID := &req.InstanceID
 	client, err := New(instanceID)
 	if err != nil {
@@ -27,12 +27,23 @@ func HandlerReq(ctx context.Context, req Request) error {
 
 	switch state.Name {
 	case "running":
-		// stop
-		stopInstance(ctx, *instanceID, client)
-		return nil
+		ok, err := checkExpectedTime(ctx)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			//start
+			stopInstance(ctx, *instanceID, client)
+		}
 	case "stopped":
-		//start
-		startInstance(ctx, *instanceID, client)
+		ok, err := checkExpectedTime(ctx)
+		if err != nil {
+			return err
+		}
+		if ok {
+			//start
+			startInstance(ctx, *instanceID, client)
+		}
 	default:
 		return fmt.Errorf("instance is under wrong state: %s", state.Name)
 	}
@@ -94,4 +105,16 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 		}
 		return nil
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(200*time.Millisecond), 3))
+}
+
+func checkExpectedTime(ctx context.Context) (bool, error) {
+	zone := time.FixedZone("CST", 9*3600)
+	t := time.Now()
+	currentTime, err := time.ParseInLocation(format, t.String(), zone)
+	if err != nil {
+		return false, err
+	}
+	startTime := time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
+	endTime := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
 }
