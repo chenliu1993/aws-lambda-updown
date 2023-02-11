@@ -12,7 +12,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 )
 
-func HandlerReq(ctx context.Context, req Request, currentTime time.Time) error {
+func HandlerReq(ctx context.Context, req Request) error {
 	instanceID := &req.InstanceID
 	client, err := New(instanceID, req.ApiKey, req.ApiSecret)
 	if err != nil {
@@ -108,13 +108,16 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 }
 
 func checkExpectedTime(ctx context.Context) (bool, error) {
-	zone := time.FixedZone("CST", 9*3600)
-	t := time.Now()
-	currentTime, err := time.ParseInLocation(format, t.String(), zone)
+	// zone := time.FixedZone("Asia/Tokyo", 9*3600)
+	zone, err := time.LoadLocation("")
 	if err != nil {
+		log.Printf("configure timezone failed %v", err)
 		return false, err
 	}
+	t := time.Now()
+	currentTime := t.Add(9 * time.Hour)
 	startTime := time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
 	endTime := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+	log.Printf("current time is %s, start time is %s, end time is %s", currentTime.String(), startTime.String(), endTime.String())
 	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
 }
