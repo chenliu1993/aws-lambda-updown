@@ -4,3 +4,5 @@
 
 triggered by event bus scheduler to start and shutdown the computer
 
+## TO-DO
+Add tests

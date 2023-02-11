@@ -14,7 +14,7 @@ import (
 
 func HandlerReq(ctx context.Context, req Request) error {
 	instanceID := &req.InstanceID
-	client, err := New(instanceID)
+	client, err := New(instanceID, req.ApiKey, req.ApiSecret)
 	if err != nil {
 		return err
 	}
@@ -27,12 +27,23 @@ func HandlerReq(ctx context.Context, req Request) error {
 
 	switch state.Name {
 	case "running":
-		// stop
-		stopInstance(ctx, *instanceID, client)
-		return nil
+		ok, err := checkExpectedTime(ctx)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			//start
+			stopInstance(ctx, *instanceID, client)
+		}
 	case "stopped":
-		//start
-		startInstance(ctx, *instanceID, client)
+		ok, err := checkExpectedTime(ctx)
+		if err != nil {
+			return err
+		}
+		if ok {
+			//start
+			startInstance(ctx, *instanceID, client)
+		}
 	default:
 		return fmt.Errorf("instance is under wrong state: %s", state.Name)
 	}
@@ -94,4 +105,19 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 		}
 		return nil
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(200*time.Millisecond), 3))
+}
+
+func checkExpectedTime(ctx context.Context) (bool, error) {
+	// zone := time.FixedZone("Asia/Tokyo", 9*3600)
+	zone, err := time.LoadLocation("")
+	if err != nil {
+		log.Printf("configure timezone failed %v", err)
+		return false, err
+	}
+	t := time.Now()
+	currentTime := t.Add(9 * time.Hour)
+	startTime := time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
+	endTime := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+	log.Printf("current time is %s, start time is %s, end time is %s", currentTime.String(), startTime.String(), endTime.String())
+	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
 }
