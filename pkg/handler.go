@@ -35,15 +35,15 @@ func HandlerReq(ctx context.Context, req Request) error {
 			stopInstance(ctx, *instanceID, client)
 		}
 	case "stopped":
-		// ok, err := checkExpectedTime(ctx)
-		// if err != nil {
-		// 	return err
-		// }
-		// if ok {
-		// 	//start
-		// 	startInstance(ctx, *instanceID, client)
-		startInstance(ctx, *instanceID, client)
-		// }
+		ok, err := checkExpectedTime(ctx)
+		if err != nil {
+			return err
+		}
+		if ok {
+			//start
+			startInstance(ctx, *instanceID, client)
+			// startInstance(ctx, *instanceID, client)
+		}
 	default:
 		log.Printf("instance is under wrong state: %s", state.Name)
 	}
