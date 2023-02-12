@@ -35,16 +35,17 @@ func HandlerReq(ctx context.Context, req Request) error {
 			stopInstance(ctx, *instanceID, client)
 		}
 	case "stopped":
-		ok, err := checkExpectedTime(ctx)
-		if err != nil {
-			return err
-		}
-		if ok {
-			//start
-			startInstance(ctx, *instanceID, client)
-		}
+		// ok, err := checkExpectedTime(ctx)
+		// if err != nil {
+		// 	return err
+		// }
+		// if ok {
+		// 	//start
+		// 	startInstance(ctx, *instanceID, client)
+		startInstance(ctx, *instanceID, client)
+		// }
 	default:
-		return fmt.Errorf("instance is under wrong state: %s", state.Name)
+		log.Printf("instance is under wrong state: %s", state.Name)
 	}
 	return nil
 }
@@ -74,10 +75,13 @@ func startInstance(ctx context.Context, instanceID string, client *ec2.Client) e
 		// DryRun: aws.Bool(true),
 	}
 
+	log.Printf("begin start instance")
 	_, err := client.StartInstances(ctx, input)
 	if err != nil {
+		log.Printf("start met error %v", err.Error())
 		return err
 	}
+	log.Printf("start instance op done")
 	return backoff.Retry(func() error {
 		state, err := checkInstanceStatus(ctx, instanceID, client)
 		if err != nil {
@@ -88,7 +92,7 @@ func startInstance(ctx context.Context, instanceID string, client *ec2.Client) e
 		}
 		log.Println("started")
 		return nil
-	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(600*time.Millisecond), 3))
+	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
 func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
@@ -101,6 +105,7 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 	}
 	_, err := client.StopInstances(ctx, input)
 	if err != nil {
+		log.Printf("stop met error %v", err.Error())
 		return err
 	}
 	return backoff.Retry(func() error {
@@ -113,7 +118,7 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 		}
 		log.Println("stopped")
 		return nil
-	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(500*time.Millisecond), 3))
+	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
 func checkExpectedTime(ctx context.Context) (bool, error) {
