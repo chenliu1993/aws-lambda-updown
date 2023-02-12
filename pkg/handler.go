@@ -74,16 +74,21 @@ func startInstance(ctx context.Context, instanceID string, client *ec2.Client) e
 		// DryRun: aws.Bool(true),
 	}
 
-	output, err := client.StartInstances(ctx, input)
+	_, err := client.StartInstances(ctx, input)
 	if err != nil {
 		return err
 	}
 	return backoff.Retry(func() error {
-		if output.StartingInstances[0].CurrentState.Name != "running" {
-			return fmt.Errorf("the instance %s is still in %s state: ", *output.StartingInstances[0].InstanceId, output.StartingInstances[0].CurrentState.Name)
+		state, err := checkInstanceStatus(ctx, instanceID, client)
+		if err != nil {
+			return err
 		}
+		if state.Name != "running" {
+			return fmt.Errorf("the instance %s is still in %s state: ", instanceID, state.Name)
+		}
+		log.Println("started")
 		return nil
-	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(200*time.Millisecond), 3))
+	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(600*time.Millisecond), 3))
 }
 
 func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
@@ -94,16 +99,21 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 		},
 		// DryRun: aws.Bool(true),
 	}
-	output, err := client.StopInstances(ctx, input)
+	_, err := client.StopInstances(ctx, input)
 	if err != nil {
 		return err
 	}
 	return backoff.Retry(func() error {
-		if output.StoppingInstances[0].CurrentState.Name != "stopped" {
-			return fmt.Errorf("the instance %s is still in %s state: ", *output.StoppingInstances[0].InstanceId, output.StoppingInstances[0].CurrentState.Name)
+		state, err := checkInstanceStatus(ctx, instanceID, client)
+		if err != nil {
+			return err
 		}
+		if state.Name != "stopped" {
+			return fmt.Errorf("the instance %s is still in %s state: ", instanceID, state.Name)
+		}
+		log.Println("stopped")
 		return nil
-	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(200*time.Millisecond), 3))
+	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(500*time.Millisecond), 3))
 }
 
 func checkExpectedTime(ctx context.Context) (bool, error) {
