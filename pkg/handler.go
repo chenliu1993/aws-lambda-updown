@@ -26,7 +26,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 
 	switch state.Name {
 	case "running":
-		ok, err := checkExpectedTime(ctx)
+		ok, err := checkExpectedTime(ctx, time.Now())
 		if err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 			stopInstance(ctx, *instanceID, client)
 		}
 	case "stopped":
-		ok, err := checkExpectedTime(ctx)
+		ok, err := checkExpectedTime(ctx, time.Now())
 		if err != nil {
 			return err
 		}
@@ -121,17 +121,17 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
-func checkExpectedTime(ctx context.Context) (bool, error) {
+func checkExpectedTime(ctx context.Context, currentTime time.Time) (bool, error) {
 	// zone := time.FixedZone("Asia/Tokyo", 9*3600)
 	zone, err := time.LoadLocation("")
 	if err != nil {
 		log.Printf("configure timezone failed %v", err)
 		return false, err
 	}
-	t := time.Now()
-	currentTime := t.Add(9 * time.Hour)
-	startTime := time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
-	endTime := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
-	log.Printf("current time is %s, start time is %s, end time is %s", currentTime.String(), startTime.String(), endTime.String())
-	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
+	// t := time.Now()
+	fakeTime := currentTime.Add(9 * time.Hour)
+	startTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 9, 0, 0, 0, zone)
+	endTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 18, 0, 0, 0, zone)
+	log.Printf("current time is %s, start time is %s, end time is %s", fakeTime.String(), startTime.String(), endTime.String())
+	return fakeTime.Sub(startTime) >= 0 && endTime.Sub(fakeTime) > 0, nil
 }
