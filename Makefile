@@ -23,3 +23,8 @@ all-linux: build-linux package-linux
 
 .PHONY: all-windows
 all-windows: build-windows package-windows
+
+
+.PHONY: unit-test
+unit-test:
+	go test . -cover -coverprofile cover.out

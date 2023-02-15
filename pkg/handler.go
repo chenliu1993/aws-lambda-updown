@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/cenkalti/backoff/v4"
@@ -32,7 +33,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 		}
 		if !ok {
 			//start
-			stopInstance(ctx, *instanceID, client)
+			stopInstance(ctx, *instanceID, client, false)
 		}
 	case "stopped":
 		ok, err := checkExpectedTime(ctx, time.Now())
@@ -41,7 +42,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 		}
 		if ok {
 			//start
-			startInstance(ctx, *instanceID, client)
+			startInstance(ctx, *instanceID, client, false)
 			// startInstance(ctx, *instanceID, client)
 		}
 	default:
@@ -66,13 +67,13 @@ func checkInstanceStatus(ctx context.Context, instanceID string, client *ec2.Cli
 	return output.Reservations[0].Instances[0].State, nil
 }
 
-func startInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
+func startInstance(ctx context.Context, instanceID string, client *ec2.Client, dryrun bool) error {
 	log.Println("start the instance ", instanceID)
 	input := &ec2.StartInstancesInput{
 		InstanceIds: []string{
 			instanceID,
 		},
-		// DryRun: aws.Bool(true),
+		DryRun: aws.Bool(dryrun),
 	}
 
 	log.Printf("begin start instance")
@@ -95,13 +96,13 @@ func startInstance(ctx context.Context, instanceID string, client *ec2.Client) e
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
-func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) error {
+func stopInstance(ctx context.Context, instanceID string, client *ec2.Client, dryrun bool) error {
 	log.Println("stop the instance ", instanceID)
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []string{
 			instanceID,
 		},
-		// DryRun: aws.Bool(true),
+		DryRun: aws.Bool(dryrun),
 	}
 	_, err := client.StopInstances(ctx, input)
 	if err != nil {
