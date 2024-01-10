@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/cenkalti/backoff/v4"
 )
+
+var layout = "2006-01-02 15:04:05"
 
 func HandlerReq(ctx context.Context, req Request) error {
 	instanceID := &req.InstanceID
@@ -26,7 +29,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 
 	switch state.Name {
 	case "running":
-		ok, err := checkExpectedTime(ctx)
+		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour)
 		if err != nil {
 			return err
 		}
@@ -35,7 +38,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 			stopInstance(ctx, *instanceID, client)
 		}
 	case "stopped":
-		ok, err := checkExpectedTime(ctx)
+		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour)
 		if err != nil {
 			return err
 		}
@@ -121,7 +124,7 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
-func checkExpectedTime(ctx context.Context) (bool, error) {
+func checkExpectedTime(ctx context.Context, start_time, stop_time string) (bool, error) {
 	// zone := time.FixedZone("Asia/Tokyo", 9*3600)
 	zone, err := time.LoadLocation("")
 	if err != nil {
@@ -130,8 +133,29 @@ func checkExpectedTime(ctx context.Context) (bool, error) {
 	}
 	t := time.Now()
 	currentTime := t.Add(9 * time.Hour)
-	startTime := time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
-	endTime := time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+	var (
+		startTime  = time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
+		endTime    = time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+		start, end int
+	)
+	if start_time != "" {
+		start, err = strconv.Atoi(start_time)
+		if err != nil {
+			log.Printf("parse start time failed %v/%s", err, start_time)
+			return false, err
+		}
+		startTime = time.Date(t.Year(), t.Month(), t.Day(), start, 0, 0, 0, zone)
+	}
+
+	if stop_time != "" {
+		end, err = strconv.Atoi(stop_time)
+		if err != nil {
+			log.Printf("parse start time failed %v/%s", err, stop_time)
+			return false, err
+		}
+		endTime = time.Date(t.Year(), t.Month(), t.Day(), end, 0, 0, 0, zone)
+	}
+
 	log.Printf("current time is %s, start time is %s, end time is %s", currentTime.String(), startTime.String(), endTime.String())
 	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
 }
