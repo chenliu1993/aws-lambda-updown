@@ -29,7 +29,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 
 	switch state.Name {
 	case "running":
-		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour)
+		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour, req.Timezone)
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ func HandlerReq(ctx context.Context, req Request) error {
 			stopInstance(ctx, *instanceID, client)
 		}
 	case "stopped":
-		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour)
+		ok, err := checkExpectedTime(ctx, req.StartHour, req.StopHour, req.Timezone)
 		if err != nil {
 			return err
 		}
@@ -124,18 +124,22 @@ func stopInstance(ctx context.Context, instanceID string, client *ec2.Client) er
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 3))
 }
 
-func checkExpectedTime(ctx context.Context, start_time, stop_time string) (bool, error) {
-	// zone := time.FixedZone("Asia/Tokyo", 9*3600)
+func checkExpectedTime(ctx context.Context, start_time, stop_time, timezone string) (bool, error) {
+	// default to UTC
 	zone, err := time.LoadLocation("")
+	if timezone != "" {
+		zone, err = time.LoadLocation(timezone)
+	}
 	if err != nil {
 		log.Printf("configure timezone failed %v", err)
 		return false, err
 	}
-	t := time.Now()
-	currentTime := t.Add(9 * time.Hour)
+	t := time.Now().In(zone)
+
+	// currentTime := t.Add(9 * time.Hour)
 	var (
-		startTime  = time.Date(t.Year(), t.Month(), t.Day(), 9, 0, 0, 0, zone)
-		endTime    = time.Date(t.Year(), t.Month(), t.Day(), 18, 0, 0, 0, zone)
+		startTime  = time.Date(t.Year(), t.Month(), t.Day(), 7, 0, 0, 0, zone)
+		endTime    = time.Date(t.Year(), t.Month(), t.Day(), 22, 0, 0, 0, zone)
 		start, end int
 	)
 	if start_time != "" {
@@ -156,6 +160,6 @@ func checkExpectedTime(ctx context.Context, start_time, stop_time string) (bool,
 		endTime = time.Date(t.Year(), t.Month(), t.Day(), end, 0, 0, 0, zone)
 	}
 
-	log.Printf("current time is %s, start time is %s, end time is %s", currentTime.String(), startTime.String(), endTime.String())
-	return currentTime.Sub(startTime) >= 0 && endTime.Sub(currentTime) > 0, nil
+	log.Printf("current time is %s, start time is %s, end time is %s", t.String(), startTime.String(), endTime.String())
+	return t.Sub(startTime) >= 0 && endTime.Sub(t) > 0, nil
 }
